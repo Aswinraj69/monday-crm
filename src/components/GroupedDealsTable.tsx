@@ -71,6 +71,12 @@ import {
   PopoverTrigger,
 } from '@/components/ui/popover';
 import { Calendar as CalendarComponent } from '@/components/ui/calendar';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from '@/components/ui/tooltip';
 import { ColumnControls } from '@/components/ColumnControls';
 import { ResizeHandle } from '@/components/ResizeHandle';
 import { StatusBadge } from '@/components/StatusBadge';
@@ -410,6 +416,24 @@ export function GroupedDealsTable({ deals, groupByField }: GroupedDealsTableProp
     return name.split(' ').map(n => n[0]).join('').toUpperCase();
   };
 
+  const renderTextWithTooltip = (text: string, maxLen: number = 25) => {
+    const needsEllipsis = text && text.length > maxLen;
+    const display = needsEllipsis ? `${text.slice(0, maxLen)}...` : text;
+    if (!needsEllipsis) return <span className="text-sm">{display}</span>;
+    return (
+      <TooltipProvider>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <span className="text-sm">{display}</span>
+          </TooltipTrigger>
+          <TooltipContent className="bg-background border shadow-lg z-50 max-w-80">
+            <span className="text-sm leading-snug break-words">{text}</span>
+          </TooltipContent>
+        </Tooltip>
+      </TooltipProvider>
+    );
+  };
+
   const uniqueOwners = useMemo(() => {
     return Array.from(new Set(dealsData.map(d => d.owner)));
   }, [dealsData]);
@@ -603,7 +627,7 @@ export function GroupedDealsTable({ deals, groupByField }: GroupedDealsTableProp
               </div>
             ) : (
               <div className="flex items-center gap-2">
-                {deal.dealName}
+                {renderTextWithTooltip(deal.dealName)}
                 <Edit className="h-3 w-3 opacity-0 group-hover:opacity-100" />
               </div>
             )}
@@ -615,7 +639,7 @@ export function GroupedDealsTable({ deals, groupByField }: GroupedDealsTableProp
           <TableCell {...baseCellProps} onClick={() => setFocusedCell({ groupIndex, rowIndex, columnIndex })}>
             <div className="flex items-center gap-2">
               <Building className="h-4 w-4 text-muted-foreground" />
-              <span className="text-sm">{deal.company}</span>
+              {renderTextWithTooltip(deal.company)}
             </div>
           </TableCell>
         );
@@ -658,7 +682,7 @@ export function GroupedDealsTable({ deals, groupByField }: GroupedDealsTableProp
                       {getInitials(deal.owner)}
                     </AvatarFallback>
                   </Avatar>
-                  <span className="text-sm">{deal.owner}</span>
+                  {renderTextWithTooltip(deal.owner)}
                   <ChevronDown className="h-3 w-3" />
                 </div>
               </DropdownMenuTrigger>
@@ -815,14 +839,14 @@ export function GroupedDealsTable({ deals, groupByField }: GroupedDealsTableProp
       case 'source':
         return (
           <TableCell {...baseCellProps} onClick={() => setFocusedCell({ groupIndex, rowIndex, columnIndex })}>
-            <span className="text-sm">{deal.source}</span>
+            {renderTextWithTooltip(deal.source)}
           </TableCell>
         );
         
       default:
         return (
           <TableCell {...baseCellProps} onClick={() => setFocusedCell({ groupIndex, rowIndex, columnIndex })}>
-            <span className="text-sm">{String(deal[columnKey])}</span>
+            {renderTextWithTooltip(String(deal[columnKey]))}
           </TableCell>
         );
     }
