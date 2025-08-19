@@ -115,8 +115,8 @@ export const mockDeals: Deal[] = [
 ];
 
 export const defaultColumns: ColumnConfig[] = [
-  { key: 'dealName', title: 'Deal Name', width: 200, visible: true, sortable: true, resizable: true, pinned: true },
-  { key: 'company', title: 'Company', width: 150, visible: true, sortable: true, resizable: true, pinned: true },
+  { key: 'dealName', title: 'Deal Name', width: 200, visible: true, sortable: true, resizable: true, pinned: false },
+  { key: 'company', title: 'Company', width: 150, visible: true, sortable: true, resizable: true, pinned: false },
   { key: 'owner', title: 'Owner', width: 120, visible: true, sortable: true, resizable: true, pinned: false },
   { key: 'status', title: 'Status', width: 100, visible: true, sortable: true, resizable: true, pinned: false },
   { key: 'value', title: 'Value', width: 120, visible: true, sortable: true, resizable: true, pinned: false },
