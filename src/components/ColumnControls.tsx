@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Settings, Eye, EyeOff, GripVertical } from 'lucide-react';
+import { Settings, Eye, EyeOff, GripVertical, Pin, PinOff } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { 
@@ -34,9 +34,10 @@ interface ColumnControlsProps {
 interface SortableColumnItemProps {
   column: ColumnConfig;
   onToggle: (key: string) => void;
+  onPinToggle: (key: string) => void;
 }
 
-function SortableColumnItem({ column, onToggle }: SortableColumnItemProps) {
+function SortableColumnItem({ column, onToggle, onPinToggle }: SortableColumnItemProps) {
   const {
     attributes,
     listeners,
@@ -80,6 +81,20 @@ function SortableColumnItem({ column, onToggle }: SortableColumnItemProps) {
         )}
         <span className="text-sm font-medium">{column.title}</span>
       </div>
+      
+      <Button
+        variant="ghost"
+        size="sm"
+        className="h-6 w-6 p-0 hover:bg-muted/50"
+        onClick={() => onPinToggle(column.key)}
+        title={column.pinned ? 'Unpin column' : 'Pin column'}
+      >
+        {column.pinned ? (
+          <Pin className="h-3 w-3 text-primary" />
+        ) : (
+          <PinOff className="h-3 w-3 text-muted-foreground" />
+        )}
+      </Button>
     </div>
   );
 }
@@ -115,7 +130,17 @@ export function ColumnControls({ columns, onColumnsChange }: ColumnControlsProps
     onColumnsChange(newColumns);
   };
 
+  const togglePinColumn = (columnKey: string) => {
+    const newColumns = columns.map(col => 
+      col.key === columnKey 
+        ? { ...col, pinned: !col.pinned }
+        : col
+    );
+    onColumnsChange(newColumns);
+  };
+
   const visibleCount = columns.filter(col => col.visible).length;
+  const pinnedCount = columns.filter(col => col.pinned).length;
 
   return (
     <DropdownMenu open={isOpen} onOpenChange={setIsOpen}>
@@ -123,16 +148,21 @@ export function ColumnControls({ columns, onColumnsChange }: ColumnControlsProps
         <Button variant="outline" size="sm" className="gap-2 bg-background border shadow-sm">
           <Settings className="h-4 w-4" />
           Columns ({visibleCount})
+          {pinnedCount > 0 && (
+            <span className="ml-1 text-xs bg-primary text-primary-foreground rounded px-1">
+              {pinnedCount} pinned
+            </span>
+          )}
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent 
-        className="w-64 p-0 bg-background border shadow-lg z-50"
+        className="w-72 p-0 bg-background border shadow-lg z-50"
         align="end"
       >
         <div className="p-3 border-b">
           <h4 className="font-medium text-sm">Column Settings</h4>
           <p className="text-xs text-muted-foreground mt-1">
-            Drag to reorder, toggle to show/hide
+            Drag to reorder, toggle to show/hide, pin to freeze
           </p>
         </div>
         
@@ -151,6 +181,7 @@ export function ColumnControls({ columns, onColumnsChange }: ColumnControlsProps
                   key={column.key}
                   column={column}
                   onToggle={toggleColumn}
+                  onPinToggle={togglePinColumn}
                 />
               ))}
             </SortableContext>
@@ -183,6 +214,17 @@ export function ColumnControls({ columns, onColumnsChange }: ColumnControlsProps
               className="text-xs"
             >
               Reset
+            </Button>
+            <Button 
+              size="sm" 
+              variant="outline" 
+              onClick={() => {
+                const unpinned = columns.map(col => ({ ...col, pinned: false }));
+                onColumnsChange(unpinned);
+              }}
+              className="text-xs"
+            >
+              Unpin All
             </Button>
           </div>
         </div>

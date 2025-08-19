@@ -48,7 +48,7 @@ const activities: Activity[] = [
 export const mockDeals: Deal[] = [
   {
     id: '1',
-    dealName: 'Google deal',
+    dealName: 'Google',
     company: 'Google',
     owner: 'Steven Scott',
     status: 'qualified',
@@ -103,7 +103,7 @@ export const mockDeals: Deal[] = [
     id: '5',
     dealName: 'Apple deal',
     company: 'Apple',
-    owner: 'Robert Thompson',
+    owner: 'kian jack',
     status: 'won',
     value: 30000,
     expectedCloseDate: '2024-08-16',
@@ -115,13 +115,13 @@ export const mockDeals: Deal[] = [
 ];
 
 export const defaultColumns: ColumnConfig[] = [
-  { key: 'dealName', title: 'Deal Name', width: 200, visible: true, sortable: true, resizable: true },
-  { key: 'company', title: 'Company', width: 150, visible: true, sortable: true, resizable: true },
-  { key: 'owner', title: 'Owner', width: 120, visible: true, sortable: true, resizable: true },
-  { key: 'status', title: 'Status', width: 100, visible: true, sortable: true, resizable: true },
-  { key: 'value', title: 'Value', width: 120, visible: true, sortable: true, resizable: true },
-  { key: 'probability', title: 'Probability', width: 100, visible: true, sortable: true, resizable: true },
-  { key: 'expectedCloseDate', title: 'Close Date', width: 120, visible: true, sortable: true, resizable: true },
-  { key: 'lastActivity', title: 'Last Activity', width: 120, visible: true, sortable: true, resizable: true },
-  { key: 'source', title: 'Source', width: 120, visible: true, sortable: true, resizable: true }
+  { key: 'dealName', title: 'Deal Name', width: 200, visible: true, sortable: true, resizable: true, pinned: true },
+  { key: 'company', title: 'Company', width: 150, visible: true, sortable: true, resizable: true, pinned: true },
+  { key: 'owner', title: 'Owner', width: 120, visible: true, sortable: true, resizable: true, pinned: false },
+  { key: 'status', title: 'Status', width: 100, visible: true, sortable: true, resizable: true, pinned: false },
+  { key: 'value', title: 'Value', width: 120, visible: true, sortable: true, resizable: true, pinned: false },
+  { key: 'probability', title: 'Probability', width: 100, visible: true, sortable: true, resizable: true, pinned: false },
+  { key: 'expectedCloseDate', title: 'Close Date', width: 120, visible: true, sortable: true, resizable: true, pinned: false },
+  { key: 'lastActivity', title: 'Last Activity', width: 120, visible: true, sortable: true, resizable: true, pinned: false },
+  { key: 'source', title: 'Source', width: 120, visible: true, sortable: true, resizable: true, pinned: false }
 ];

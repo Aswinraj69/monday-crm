@@ -350,12 +350,9 @@ export function DealsTable({ deals, columns, onColumnsChange }: DealsTableProps)
   }, []);
 
   const handleEditChange = useCallback((value: string, rowIndex: number, colIndex: number) => {
-    console.log(`Editing cell [${rowIndex}, ${colIndex}] with value: ${value}`);
   }, []);
 
   const updateDealCloseDate = (dealId: string, newDate: Date) => {
-    console.log('Updating deal close date:', dealId, newDate);
-    console.log('Date updated for deal:', dealId, 'to:', format(newDate, 'yyyy-MM-dd'));
     setCalendarOpen({ dealId: '', isOpen: false });
   };
 

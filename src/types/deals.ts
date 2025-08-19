@@ -43,6 +43,7 @@ export interface ColumnConfig {
   visible: boolean;
   sortable: boolean;
   resizable: boolean;
+  pinned?: boolean;
 }
 
 export type GroupByField = 'status' | 'owner' | 'company' | 'source' | 'none';

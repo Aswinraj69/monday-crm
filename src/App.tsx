@@ -99,11 +99,11 @@ const App = () => (
       <Sonner />
       <BrowserRouter>
         <SidebarProvider>
-          <div className="min-h-screen flex w-full">
+          <div className="min-h-screen flex w-full overflow-x-auto">
             <AppSidebar />
-            <main className="flex-1 flex flex-col overflow-hidden">
+            <main className="flex-1 flex flex-col overflow-x-auto">
               <GlobalHeader />
-              <div className="flex-1 overflow-hidden">
+              <div className="flex-1">
                 <Routes>
                   <Route path="/" element={<Index />} />
                   <Route path="/sequences" element={<div className="p-8 text-center text-muted-foreground">Sequences (Coming Soon)</div>} />
@@ -115,7 +115,6 @@ const App = () => (
                   <Route path="/products" element={<div className="p-8 text-center text-muted-foreground">Products & Services (Coming Soon)</div>} />
                   <Route path="/activities" element={<div className="p-8 text-center text-muted-foreground">Activities (Coming Soon)</div>} />
                   <Route path="/dashboard" element={<div className="p-8 text-center text-muted-foreground">Sales Dashboard (Coming Soon)</div>} />
-                  {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
                   <Route path="*" element={<NotFound />} />
                 </Routes>
               </div>

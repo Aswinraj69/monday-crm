@@ -282,13 +282,10 @@ export function AdvancedDealsTable({ deals, columns, onColumnChange }: AdvancedD
   }, [columns, onColumnChange]);
 
   const handleCellEdit = useCallback((dealId: string, field: string, value: any) => {
-    console.log('Edit cell:', dealId, field, value);
     setEditingCell(null);
   }, []);
 
   const updateDealCloseDate = (dealId: string, newDate: Date) => {
-    console.log('Updating deal close date:', dealId, newDate);
-    console.log('Date updated for deal:', dealId, 'to:', format(newDate, 'yyyy-MM-dd'));
     setCalendarOpen({ dealId: '', isOpen: false });
   };
 
@@ -373,10 +370,9 @@ export function AdvancedDealsTable({ deals, columns, onColumnChange }: AdvancedD
         });
         break;
       case 'filter':
-        console.log('Filter by column:', columnKey);
         break;
       case 'export':
-        console.log('Export column:', columnKey);
+        
         break;
     }
   };
@@ -384,19 +380,14 @@ export function AdvancedDealsTable({ deals, columns, onColumnChange }: AdvancedD
   const handleRowContextMenu = (dealId: string, action: string) => {
     switch (action) {
       case 'edit':
-        console.log('Edit deal:', dealId);
         break;
       case 'duplicate':
-        console.log('Duplicate deal:', dealId);
         break;
       case 'delete':
-        console.log('Delete deal:', dealId);
         break;
       case 'archive':
-        console.log('Archive deal:', dealId);
         break;
       case 'share':
-        console.log('Share deal:', dealId);
         break;
       case 'favorite':
         setFavoriteDeals(prev => {
@@ -422,7 +413,7 @@ export function AdvancedDealsTable({ deals, columns, onColumnChange }: AdvancedD
         <BulkActionsToolbar 
           selectedCount={selectedRows.size}
           onClearSelection={() => setSelectedRows(new Set())}
-          onBulkAction={(action) => console.log('Bulk action:', action)}
+          onBulkAction={() => {}}
         />
       )}
 

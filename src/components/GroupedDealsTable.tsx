@@ -99,7 +99,7 @@ export function GroupedDealsTable({ deals, groupByField }: GroupedDealsTableProp
   const savedState = loadState();
   
   const [expandedGroups, setExpandedGroups] = useState<Set<string>>(new Set(['Active Deals']));
-  const [expandedRows, setExpandedRows] = useState<Set<string>>(new Set(['1']));
+  const [expandedRows, setExpandedRows] = useState<Set<string>>(new Set());
   const [selectedRows, setSelectedRows] = useState<Set<string>>(new Set());
   const [sortConfig, setSortConfig] = useState<SortConfig[]>(savedState.sortConfigs || []);
   const [editingCell, setEditingCell] = useState<{ dealId: string; field: string } | null>(null);
@@ -109,8 +109,8 @@ export function GroupedDealsTable({ deals, groupByField }: GroupedDealsTableProp
   const [dealsData, setDealsData] = useState<Deal[]>(deals);
   const [lastSelectedRow, setLastSelectedRow] = useState<string | null>(null);
   const [calendarOpen, setCalendarOpen] = useState<{ dealId: string; isOpen: boolean }>({ dealId: '', isOpen: false });
-  const [pinnedColumns, setPinnedColumns] = useState<Set<string>>(new Set());
   const [favoriteDeals, setFavoriteDeals] = useState<Set<string>>(new Set());
+  const [ownerSearch, setOwnerSearch] = useState<string>('');
   
   const tableRef = useRef<HTMLDivElement>(null);
   const cellRefs = useRef<Map<string, HTMLElement>>(new Map());
@@ -202,7 +202,6 @@ export function GroupedDealsTable({ deals, groupByField }: GroupedDealsTableProp
   };
 
   const handleBulkAction = (action: string) => {
-    console.log('Bulk action:', action, 'for', selectedRows.size, 'rows');
     switch (action) {
       case 'delete':
         setDealsData(prev => prev.filter(deal => !selectedRows.has(deal.id)));
@@ -213,12 +212,11 @@ export function GroupedDealsTable({ deals, groupByField }: GroupedDealsTableProp
       case 'duplicate':
         break;
       default:
-        console.log('Action not implemented:', action);
+        break;
     }
   };
 
   const toggleGroup = (groupName: string) => {
-    console.log('Toggling group:', groupName);
     setExpandedGroups(prev => {
       const newSet = new Set(prev);
       if (newSet.has(groupName)) {
@@ -226,39 +224,29 @@ export function GroupedDealsTable({ deals, groupByField }: GroupedDealsTableProp
       } else {
         newSet.add(groupName);
       }
-      console.log('New expanded groups:', Array.from(newSet));
       return newSet;
     });
   };
 
   const toggleRow = (dealId: string) => {
-    console.log('Toggling row expansion for deal:', dealId);
     setExpandedRows(prev => {
       const newSet = new Set(prev);
       if (newSet.has(dealId)) {
         newSet.delete(dealId);
-        console.log('Collapsing deal:', dealId);
       } else {
         newSet.add(dealId);
-        console.log('Expanding deal:', dealId);
       }
-      console.log('New expanded rows:', Array.from(newSet));
       return newSet;
     });
   };
 
   const handleSort = (column: string) => {
     setSortConfig(prev => {
-      const existing = prev.find(s => s.key === column as keyof Deal);
-      if (existing) {
-        if (existing.direction === 'asc') {
-          return prev.map(s => s.key === column ? { ...s, direction: 'desc' as const } : s);
-        } else {
-          return prev.filter(s => s.key !== column);
-        }
-      } else {
-        return [...prev, { key: column as keyof Deal, direction: 'asc' as const }];
+      const existing = prev.find(s => s.key === (column as keyof Deal));
+      if (!existing) {
+        return [{ key: column as keyof Deal, direction: 'asc' }];
       }
+      return [{ key: column as keyof Deal, direction: existing.direction === 'asc' ? 'desc' : 'asc' }];
     });
   };
 
@@ -269,14 +257,12 @@ export function GroupedDealsTable({ deals, groupByField }: GroupedDealsTableProp
   };
 
   const startEditingCell = (dealId: string, field: string, currentValue: string) => {
-    console.log('Starting edit:', { dealId, field, currentValue });
     setEditingCell({ dealId, field });
     setEditValue(currentValue);
     setFocusedCell(null);
   };
 
   const saveEdit = () => {
-    console.log('Saving edit:', editingCell, editValue);
     if (editingCell) {
       setDealsData(prev => prev.map(deal => {
         if (deal.id === editingCell.dealId) {
@@ -286,7 +272,6 @@ export function GroupedDealsTable({ deals, groupByField }: GroupedDealsTableProp
           } else if (editingCell.field === 'value') {
             updatedDeal.value = parseFloat(editValue) || 0;
           }
-          console.log('Updated deal:', updatedDeal);
           return updatedDeal;
         }
         return deal;
@@ -297,7 +282,6 @@ export function GroupedDealsTable({ deals, groupByField }: GroupedDealsTableProp
   };
 
   const cancelEdit = () => {
-    console.log('Canceling edit');
     setEditingCell(null);
     setEditValue('');
   };
@@ -309,21 +293,18 @@ export function GroupedDealsTable({ deals, groupByField }: GroupedDealsTableProp
   };
 
   const updateDealStatus = (dealId: string, newStatus: DealStatus) => {
-    console.log('Updating deal status:', dealId, newStatus);
     setDealsData(prev => prev.map(deal => 
       deal.id === dealId ? { ...deal, status: newStatus } : deal
     ));
   };
 
   const updateDealOwner = (dealId: string, newOwner: string) => {
-    console.log('Updating deal owner:', dealId, newOwner);
     setDealsData(prev => prev.map(deal => 
       deal.id === dealId ? { ...deal, owner: newOwner } : deal
     ));
   };
 
   const updateDealCloseDate = (dealId: string, newDate: Date) => {
-    console.log('Updating deal close date:', dealId, newDate);
     setDealsData(prev => prev.map(deal => 
       deal.id === dealId ? { ...deal, expectedCloseDate: format(newDate, 'yyyy-MM-dd') } : deal
     ));
@@ -408,6 +389,8 @@ export function GroupedDealsTable({ deals, groupByField }: GroupedDealsTableProp
   };
 
   const visibleColumns = columns.filter(col => col.visible);
+  const pinnedColumns = visibleColumns.filter(col => col.pinned);
+  const scrollableColumns = visibleColumns.filter(col => !col.pinned);
   const groups = groupDeals();
 
   const getStatusBadge = (status: string) => {
@@ -426,6 +409,16 @@ export function GroupedDealsTable({ deals, groupByField }: GroupedDealsTableProp
   const getInitials = (name: string) => {
     return name.split(' ').map(n => n[0]).join('').toUpperCase();
   };
+
+  const uniqueOwners = useMemo(() => {
+    return Array.from(new Set(dealsData.map(d => d.owner)));
+  }, [dealsData]);
+
+  const filteredOwners = useMemo(() => {
+    const q = ownerSearch.trim().toLowerCase();
+    if (!q) return uniqueOwners;
+    return uniqueOwners.filter(o => o.toLowerCase().includes(q));
+  }, [uniqueOwners, ownerSearch]);
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -551,7 +544,6 @@ export function GroupedDealsTable({ deals, groupByField }: GroupedDealsTableProp
             className={cn(baseCellProps.className, "font-medium  hover:bg-muted/50")}
             onClick={(e) => {
               e.stopPropagation();
-              console.log('Deal name cell clicked:', deal.dealName);
               setFocusedCell({ groupIndex, rowIndex, columnIndex });
               if (!isEditing) {
                 startEditingCell(deal.id, 'dealName', deal.dealName);
@@ -563,13 +555,11 @@ export function GroupedDealsTable({ deals, groupByField }: GroupedDealsTableProp
                 <Input
                   value={editValue}
                   onChange={(e) => {
-                    console.log('Deal name input changed:', e.target.value);
                     setEditValue(e.target.value);
                   }}
                   className="h-8 text-sm flex-1"
                   autoFocus
                   onFocus={(e) => {
-                    console.log('Deal name input focused');
                     e.target.select();
                   }}
                   onKeyDown={(e) => {
@@ -660,7 +650,7 @@ export function GroupedDealsTable({ deals, groupByField }: GroupedDealsTableProp
       case 'owner':
         return (
           <TableCell {...baseCellProps} onClick={() => setFocusedCell({ groupIndex, rowIndex, columnIndex })}>
-            <DropdownMenu>
+            <DropdownMenu onOpenChange={(open) => { if (!open) setOwnerSearch(''); }}>
               <DropdownMenuTrigger asChild>
                 <div className="flex items-center gap-2  hover:bg-muted/50 p-1 rounded">
                   <Avatar className="h-6 w-6">
@@ -672,31 +662,31 @@ export function GroupedDealsTable({ deals, groupByField }: GroupedDealsTableProp
                   <ChevronDown className="h-3 w-3" />
                 </div>
               </DropdownMenuTrigger>
-              <DropdownMenuContent className="bg-background border shadow-lg z-50">
-                <DropdownMenuItem onClick={() => updateDealOwner(deal.id, 'Steven Scott')}>
-                  <div className="flex items-center gap-2">
-                    <Avatar className="h-5 w-5">
-                      <AvatarFallback className="text-xs">SS</AvatarFallback>
-                    </Avatar>
-                    Steven Scott
-                  </div>
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => updateDealOwner(deal.id, 'Sam Jones')}>
-                  <div className="flex items-center gap-2">
-                    <Avatar className="h-5 w-5">
-                      <AvatarFallback className="text-xs">SJ</AvatarFallback>
-                    </Avatar>
-                    Sam Jones
-                  </div>
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => updateDealOwner(deal.id, 'Robert Thompson')}>
-                  <div className="flex items-center gap-2">
-                    <Avatar className="h-5 w-5">
-                      <AvatarFallback className="text-xs">RT</AvatarFallback>
-                    </Avatar>
-                    Robert Thompson
-                  </div>
-                </DropdownMenuItem>
+              <DropdownMenuContent className="bg-background border shadow-lg z-50 w-64 p-0">
+                <div className="p-2 border-b">
+                  <Input
+                    placeholder="Search owners..."
+                    value={ownerSearch}
+                    onChange={(e) => setOwnerSearch(e.target.value)}
+                    className="h-8 text-sm"
+                    autoFocus
+                    onClick={(e) => e.stopPropagation()}
+                  />
+                </div>
+                {filteredOwners.length > 0 ? (
+                  filteredOwners.map((owner) => (
+                    <DropdownMenuItem key={owner} onClick={() => updateDealOwner(deal.id, owner)}>
+                      <div className="flex items-center gap-2">
+                        <Avatar className="h-5 w-5">
+                          <AvatarFallback className="text-xs">{getInitials(owner)}</AvatarFallback>
+                        </Avatar>
+                        {owner}
+                      </div>
+                    </DropdownMenuItem>
+                  ))
+                ) : (
+                  <div className="px-3 py-2 text-xs text-muted-foreground">No owners found</div>
+                )}
               </DropdownMenuContent>
             </DropdownMenu>
           </TableCell>
@@ -709,7 +699,6 @@ export function GroupedDealsTable({ deals, groupByField }: GroupedDealsTableProp
             className={cn(baseCellProps.className, "font-medium  hover:bg-muted/50")}
             onClick={(e) => {
               e.stopPropagation();
-              console.log('Value cell clicked:', deal.value);
               setFocusedCell({ groupIndex, rowIndex, columnIndex });
               if (!isEditing) {
                 startEditingCell(deal.id, 'value', deal.value.toString());
@@ -722,13 +711,11 @@ export function GroupedDealsTable({ deals, groupByField }: GroupedDealsTableProp
                   type="number"
                   value={editValue}
                   onChange={(e) => {
-                    console.log('Value input changed:', e.target.value);
                     setEditValue(e.target.value);
                   }}
                   className="h-8 text-sm w-32"
                   autoFocus
                   onFocus={(e) => {
-                    console.log('Value input focused');
                     e.target.select();
                   }}
                   onKeyDown={(e) => {
@@ -855,24 +842,19 @@ export function GroupedDealsTable({ deals, groupByField }: GroupedDealsTableProp
         ));
         break;
       case 'pin':
-        setPinnedColumns(prev => {
-          const newSet = new Set(prev);
-          newSet.add(columnKey);
-          return newSet;
-        });
+        setColumns(prev => prev.map(col => 
+          col.key === columnKey ? { ...col, pinned: true } : col
+        ));
         break;
       case 'unpin':
-        setPinnedColumns(prev => {
-          const newSet = new Set(prev);
-          newSet.delete(columnKey);
-          return newSet;
-        });
+        setColumns(prev => prev.map(col => 
+          col.key === columnKey ? { ...col, pinned: false } : col
+        ));
         break;
       case 'filter':
-        console.log('Filter by column:', columnKey);
         break;
       case 'export':
-        console.log('Export column:', columnKey);
+        
         break;
     }
   };
@@ -905,10 +887,9 @@ export function GroupedDealsTable({ deals, groupByField }: GroupedDealsTableProp
         });
         break;
       case 'archive':
-        console.log('Archive deal:', dealId);
         break;
       case 'share':
-        console.log('Share deal:', dealId);
+        
         break;
       case 'favorite':
         setFavoriteDeals(prev => {
@@ -973,317 +954,414 @@ export function GroupedDealsTable({ deals, groupByField }: GroupedDealsTableProp
               {/* Group Content */}
               {expandedGroups.has(group.name) && (
                 <div className="border rounded-lg overflow-hidden bg-card">
-                  <Table>
-                    <TableHeader className="bg-muted/30">
-                      <TableRow>
-                        <TableHead className="w-12">
-                          <Checkbox 
-                            checked={group.deals.length > 0 && group.deals.every(deal => selectedRows.has(deal.id))}
-                            onCheckedChange={(checked) => handleSelectAll(!!checked, group.deals)}
-                          />
-                        </TableHead>
-                        <TableHead className="w-12"></TableHead>
-                        
-                        {/* Dynamic Columns */}
-                        {visibleColumns.map((column) => (
-                          <ContextMenu key={column.key}>
-                            <ContextMenuTrigger asChild>
-                              <TableHead 
-                                className={cn(
-                                  "relative  hover:bg-muted/50 transition-colors",
-                                  pinnedColumns.has(column.key) && "bg-primary/5 border-r border-primary/20"
-                                )}
-                                style={{ width: column.width }}
-                                onClick={() => handleSort(column.key)}
-                              >
-                                <div className="flex items-center gap-2">
-                                  {pinnedColumns.has(column.key) && (
-                                    <Pin className="h-3 w-3 text-primary" />
-                                  )}
-                                  <span>{column.title}</span>
-                                  {getSortIcon(column.key)}
-                                </div>
-                                {column.resizable && (
-                                  <ResizeHandle 
-                                    onResize={(width) => updateColumnWidth(column.key, width)}
-                                  />
-                                )}
-                              </TableHead>
-                            </ContextMenuTrigger>
-                            <ContextMenuContent className="w-56">
-                              <ContextMenuItem onClick={() => handleColumnContextMenu(column.key, 'sort-asc')}>
-                                <ArrowUp className="h-4 w-4 mr-2" />
-                                Sort Ascending
-                              </ContextMenuItem>
-                              <ContextMenuItem onClick={() => handleColumnContextMenu(column.key, 'sort-desc')}>
-                                <ArrowDown className="h-4 w-4 mr-2" />
-                                Sort Descending
-                              </ContextMenuItem>
-                              <ContextMenuSeparator />
-                              <ContextMenuItem onClick={() => handleColumnContextMenu(column.key, 'filter')}>
-                                <Filter className="h-4 w-4 mr-2" />
-                                Filter by {column.title}
-                              </ContextMenuItem>
-                              <ContextMenuSeparator />
-                              {pinnedColumns.has(column.key) ? (
-                                <ContextMenuItem onClick={() => handleColumnContextMenu(column.key, 'unpin')}>
-                                  <PinOff className="h-4 w-4 mr-2" />
-                                  Unpin Column
-                                </ContextMenuItem>
-                              ) : (
-                                <ContextMenuItem onClick={() => handleColumnContextMenu(column.key, 'pin')}>
-                                  <Pin className="h-4 w-4 mr-2" />
-                                  Pin Column
-                                </ContextMenuItem>
-                              )}
-                              <ContextMenuItem onClick={() => handleColumnContextMenu(column.key, 'hide')}>
-                                <EyeOff className="h-4 w-4 mr-2" />
-                                Hide Column
-                              </ContextMenuItem>
-                              <ContextMenuSeparator />
-                              <ContextMenuItem onClick={() => handleColumnContextMenu(column.key, 'export')}>
-                                <Download className="h-4 w-4 mr-2" />
-                                Export Column
-                              </ContextMenuItem>
-                            </ContextMenuContent>
-                          </ContextMenu>
-                        ))}
-                        
-                        {/* Fixed Columns */}
-                        <TableHead className="w-32">Activities timeline</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {group.deals.map((deal, rowIndex) => (
-                        <ContextMenu key={deal.id}>
-                          <ContextMenuTrigger asChild>
-                            <React.Fragment>
-                              <TableRow 
-                                className={cn(
-                                  "hover:bg-muted/30 group ",
-                                  selectedRows.has(deal.id) && "bg-primary/5 border-l-2 border-primary",
-                                  favoriteDeals.has(deal.id) && "bg-yellow-50/50"
-                                )}
-                                onClick={(e) => handleRowSelection(deal.id, e)}
-                              >
-                                <TableCell onClick={(e) => e.stopPropagation()}>
-                                  <Checkbox 
-                                    checked={selectedRows.has(deal.id)}
-                                    onCheckedChange={(checked) => {
-                                      if (checked) {
-                                        setSelectedRows(prev => new Set([...prev, deal.id]));
-                                      } else {
-                                        setSelectedRows(prev => {
-                                          const newSet = new Set(prev);
-                                          newSet.delete(deal.id);
-                                          return newSet;
-                                        });
-                                      }
-                                      setLastSelectedRow(deal.id);
-                                    }}
-                                  />
-                                </TableCell>
-                                <TableCell className="w-12">
-                                  <button 
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      console.log('Expand button clicked for deal:', deal.id, deal.dealName);
-                                      toggleRow(deal.id);
-                                    }}
-                                    className="p-2 hover:bg-muted/50 rounded transition-colors flex items-center justify-center w-8 h-8"
-                                    title={expandedRows.has(deal.id) ? 'Collapse details' : 'Expand details'}
-                                  >
-                                    {expandedRows.has(deal.id) ? (
-                                      <ChevronDown className="h-4 w-4 text-muted-foreground" />
-                                    ) : (
-                                      <ChevronRight className="h-4 w-4 text-muted-foreground" />
+                  <div className="flex w-full">
+                    {/* Essential Columns Section (Always Visible) */}
+                    <div className="flex-shrink-0 border-r border-border">
+                      <Table>
+                        <TableHeader className="bg-muted/30">
+                          <TableRow>
+                            <TableHead className="w-12">
+                              <Checkbox 
+                                checked={group.deals.length > 0 && group.deals.every(deal => selectedRows.has(deal.id))}
+                                onCheckedChange={(checked) => handleSelectAll(!!checked, group.deals)}
+                              />
+                            </TableHead>
+                            <TableHead className="w-12"></TableHead>
+                            
+                            {/* Pinned Columns */}
+                            {pinnedColumns.map((column) => (
+                              <ContextMenu key={column.key}>
+                                <ContextMenuTrigger asChild>
+                                  <TableHead 
+                                    className={cn(
+                                      "relative bg-primary/5 border-r border-primary/20 hover:bg-muted/50 transition-colors",
+                                      "border-b border-border"
                                     )}
-                                  </button>
-                                </TableCell>
-                                
-                                {/* Dynamic Column Cells */}
-                                {visibleColumns.map((column, columnIndex) => 
-                                  renderTableCell(deal, column.key, groupIndex, rowIndex, columnIndex + 2)
-                                )}
-                                
-                                {/* Fixed Cells */}
-                                <TableCell>
-                                  <ActivityTimeline activities={deal.activities} />
-                                </TableCell>
-                              </TableRow>
-
-                              {/* Expanded Row Content - Sub Items/Activities */}
-                              {expandedRows.has(deal.id) && (
-                                <TableRow className="bg-muted/20 border-l-4 border-primary/20">
-                                  <TableCell colSpan={visibleColumns.length + 3}>
-                                    <div className="p-6 space-y-4">
-                                      {/* Sub-items Header */}
-                                      <div className="flex items-center justify-between">
-                                        <h4 className="font-semibold text-sm text-muted-foreground">
-                                          Deal Activities & Sub-items
-                                        </h4>
-                                        <Badge variant="outline" className="text-xs">
-                                          {deal.activities?.length || 0} activities
-                                        </Badge>
-                                      </div>
-                                      
-                                      {/* Column Headers */}
-                                      <div className="grid grid-cols-5 gap-4 text-sm font-medium text-muted-foreground border-b pb-2">
-                                        <div>Task/Activity</div>
-                                        <div>Owner</div>
-                                        <div>Status</div>
-                                        <div>Date</div>
-                                        <div>Actions</div>
-                                      </div>
-                                      
-                                      {/* Activities List */}
-                                      {deal.activities && deal.activities.length > 0 ? (
-                                        deal.activities.slice(0, 5).map((activity, index) => (
-                                          <div key={activity.id} className="grid grid-cols-5 gap-4 text-sm py-3 border-b last:border-b-0 hover:bg-muted/30 rounded transition-colors">
-                                            <div className="flex items-center gap-3">
-                                              <Checkbox className="h-4 w-4" />
-                                              <div className="flex items-center gap-2">
-                                                <div className={`w-2 h-2 rounded-full ${
-                                                  activity.type === 'call' ? 'bg-blue-500' :
-                                                  activity.type === 'email' ? 'bg-green-500' :
-                                                  activity.type === 'meeting' ? 'bg-purple-500' :
-                                                  'bg-orange-500'
-                                                }`} />
-                                                <span className="font-medium">{activity.description}</span>
-                                              </div>
-                                            </div>
-                                            <div className="flex items-center gap-2">
-                                              <Avatar className="h-6 w-6">
-                                                <AvatarFallback className="text-xs">
-                                                  {getInitials(activity.user)}
-                                                </AvatarFallback>
-                                              </Avatar>
-                                              <span>{activity.user}</span>
-                                            </div>
-                                            <div>
-                                              {index === 0 && (
-                                                <Badge className="bg-orange-100 text-orange-700 border-orange-200">
-                                                  In Progress
-                                                </Badge>
-                                              )}
-                                              {index === 1 && (
-                                                <Badge className="bg-blue-100 text-blue-700 border-blue-200">
-                                                  Pending
-                                                </Badge>
-                                              )}
-                                              {index > 1 && (
-                                                <Badge className="bg-green-100 text-green-700 border-green-200">
-                                                  Completed
-                                                </Badge>
-                                              )}
-                                            </div>
-                                            <div className="text-muted-foreground">
-                                              {new Date(activity.date).toLocaleDateString('en-US', {
-                                                month: 'short',
-                                                day: 'numeric',
-                                                year: 'numeric'
-                                              })}
-                                            </div>
-                                            <div className="flex items-center gap-2">
-                                              <Button size="sm" variant="ghost" className="h-6 px-2">
-                                                <Edit className="h-3 w-3" />
-                                              </Button>
-                                              <Button size="sm" variant="ghost" className="h-6 px-2">
-                                                <MoreHorizontal className="h-3 w-3" />
-                                              </Button>
-                                            </div>
-                                          </div>
-                                        ))
-                                      ) : (
-                                        <div className="text-center py-8 text-muted-foreground">
-                                          <div className="text-lg mb-2">📋</div>
-                                          <div className="text-sm">No activities yet</div>
-                                          <div className="text-xs">Add your first activity to get started</div>
-                                        </div>
-                                      )}
-                                      
-                                      {/* Add New Activity Button */}
-                                      <div className="pt-3 border-t">
-                                        <button className="text-sm text-primary hover:text-primary/80 flex items-center gap-2 font-medium">
-                                          <Plus className="h-4 w-4" />
-                                          Add new sub-item
-                                        </button>
-                                      </div>
-                                      
-                                      {/* Deal Notes Section */}
-                                      {deal.notes && (
-                                        <div className="pt-4 border-t">
-                                          <div className="text-sm font-medium text-muted-foreground mb-2">Deal Notes:</div>
-                                          <div className="text-sm bg-muted/30 p-3 rounded border-l-4 border-primary/30">
-                                            {deal.notes}
-                                          </div>
-                                        </div>
-                                      )}
+                                    style={{ width: column.width }}
+                                    onClick={() => handleSort(column.key)}
+                                  >
+                                    <div className="flex items-center gap-2">
+                                      <Pin className="h-3 w-3 text-primary" />
+                                      <span className="font-medium">{column.title}</span>
+                                      {getSortIcon(column.key)}
                                     </div>
-                                  </TableCell>
-                                </TableRow>
-                              )}
-                            </React.Fragment>
-                          </ContextMenuTrigger>
-                          <ContextMenuContent className="w-64">
-                            <ContextMenuItem onClick={() => handleRowContextMenu(deal.id, 'edit')}>
-                              <Edit className="h-4 w-4 mr-2" />
-                              Edit Deal
-                            </ContextMenuItem>
-                            <ContextMenuItem onClick={() => handleRowContextMenu(deal.id, 'duplicate')}>
-                              <Copy className="h-4 w-4 mr-2" />
-                              Duplicate Deal
-                            </ContextMenuItem>
-                            <ContextMenuSeparator />
-                            <ContextMenuItem onClick={() => handleRowContextMenu(deal.id, 'favorite')}>
-                              {favoriteDeals.has(deal.id) ? (
-                                <>
-                                  <StarOff className="h-4 w-4 mr-2" />
-                                  Remove from Favorites
-                                </>
-                              ) : (
-                                <>
-                                  <Star className="h-4 w-4 mr-2" />
-                                  Add to Favorites
-                                </>
-                              )}
-                            </ContextMenuItem>
-                            <ContextMenuItem onClick={() => handleRowContextMenu(deal.id, 'share')}>
-                              <Share className="h-4 w-4 mr-2" />
-                              Share Deal
-                            </ContextMenuItem>
-                            <ContextMenuItem onClick={() => handleRowContextMenu(deal.id, 'copy-link')}>
-                              <Link className="h-4 w-4 mr-2" />
-                              Copy Link
-                            </ContextMenuItem>
-                            <ContextMenuSeparator />
-                            <ContextMenuItem onClick={() => handleRowContextMenu(deal.id, 'archive')}>
-                              <Archive className="h-4 w-4 mr-2" />
-                              Archive Deal
-                            </ContextMenuItem>
-                            <ContextMenuSeparator />
-                            <ContextMenuItem 
-                              onClick={() => handleRowContextMenu(deal.id, 'delete')}
-                              className="text-destructive focus:text-destructive"
-                            >
-                              <Trash2 className="h-4 w-4 mr-2" />
-                              Delete Deal
-                            </ContextMenuItem>
-                          </ContextMenuContent>
-                        </ContextMenu>
-                      ))}
-                      
-                      {/* Add Deal Row */}
-                      <TableRow className="hover:bg-muted/30">
-                        <TableCell colSpan={visibleColumns.length + 3}>
-                          <button className="flex items-center gap-2 text-muted-foreground hover:text-foreground w-full py-2">
-                            <Plus className="h-4 w-4" />
-                            Add deal
-                          </button>
-                        </TableCell>
-                      </TableRow>
-                    </TableBody>
-                  </Table>
+                                    {column.resizable && (
+                                      <ResizeHandle 
+                                        onResize={(width) => updateColumnWidth(column.key, width)}
+                                      />
+                                    )}
+                                  </TableHead>
+                                </ContextMenuTrigger>
+                                <ContextMenuContent className="w-56">
+                                  <ContextMenuItem onClick={() => handleColumnContextMenu(column.key, 'sort-asc')}>
+                                    <ArrowUp className="h-4 w-4 mr-2" />
+                                    Sort Ascending
+                                  </ContextMenuItem>
+                                  <ContextMenuItem onClick={() => handleColumnContextMenu(column.key, 'sort-desc')}>
+                                    <ArrowDown className="h-4 w-4 mr-2" />
+                                    Sort Descending
+                                  </ContextMenuItem>
+                                  <ContextMenuSeparator />
+                                  <ContextMenuItem onClick={() => handleColumnContextMenu(column.key, 'filter')}>
+                                    <Filter className="h-4 w-4 mr-2" />
+                                    Filter by {column.title}
+                                  </ContextMenuItem>
+                                  <ContextMenuSeparator />
+                                  <ContextMenuItem onClick={() => handleColumnContextMenu(column.key, 'unpin')}>
+                                    <PinOff className="h-4 w-4 mr-2" />
+                                    Unpin Column
+                                  </ContextMenuItem>
+                                  <ContextMenuItem onClick={() => handleColumnContextMenu(column.key, 'hide')}>
+                                    <EyeOff className="h-4 w-4 mr-2" />
+                                    Hide Column
+                                  </ContextMenuItem>
+                                  <ContextMenuSeparator />
+                                  <ContextMenuItem onClick={() => handleColumnContextMenu(column.key, 'export')}>
+                                    <Download className="h-4 w-4 mr-2" />
+                                    Export Column
+                                  </ContextMenuItem>
+                                </ContextMenuContent>
+                              </ContextMenu>
+                            ))}
+                          </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                          {group.deals.map((deal, rowIndex) => (
+                            <ContextMenu key={deal.id}>
+                              <ContextMenuTrigger asChild>
+                                <React.Fragment>
+                                  <TableRow 
+                                    className={cn(
+                                      "hover:bg-muted/30 group ",
+                                      selectedRows.has(deal.id) && "bg-primary/5 border-l-2 border-primary",
+                                      favoriteDeals.has(deal.id) && "bg-yellow-50/50"
+                                    )}
+                                    onClick={(e) => handleRowSelection(deal.id, e)}
+                                  >
+                                    <TableCell onClick={(e) => e.stopPropagation()}>
+                                      <Checkbox 
+                                        checked={selectedRows.has(deal.id)}
+                                        onCheckedChange={(checked) => {
+                                          if (checked) {
+                                            setSelectedRows(prev => new Set([...prev, deal.id]));
+                                          } else {
+                                            setSelectedRows(prev => {
+                                              const newSet = new Set(prev);
+                                              newSet.delete(deal.id);
+                                              return newSet;
+                                            });
+                                          }
+                                          setLastSelectedRow(deal.id);
+                                        }}
+                                      />
+                                    </TableCell>
+                                    <TableCell className="w-12">
+                                      <button 
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          toggleRow(deal.id);
+                                        }}
+                                        className="p-2 hover:bg-muted/50 rounded transition-colors flex items-center justify-center w-8 h-8"
+                                        title={expandedRows.has(deal.id) ? 'Collapse details' : 'Expand details'}
+                                      >
+                                        {expandedRows.has(deal.id) ? (
+                                          <ChevronDown className="h-4 w-4 text-muted-foreground" />
+                                        ) : (
+                                          <ChevronRight className="h-4 w-4 text-muted-foreground" />
+                                        )}
+                                      </button>
+                                    </TableCell>
+                                    
+                                    {/* Pinned Column Cells */}
+                                    {pinnedColumns.map((column, columnIndex) => 
+                                      renderTableCell(deal, column.key, groupIndex, rowIndex, columnIndex + 2)
+                                    )}
+                                  </TableRow>
+
+                                  {/* Expanded Row Content for Essential Section */}
+                                  {expandedRows.has(deal.id) && (
+                                    <TableRow className="bg-muted/20 border-l-4 border-primary/20">
+                                      <TableCell colSpan={pinnedColumns.length + 2}>
+                                        <div className="p-4 text-sm text-muted-foreground">
+                                          <span className="font-medium">Deal: {deal.dealName}</span>
+                                          <br />
+                                          <span>Company: {deal.company}</span>
+                                        </div>
+                                      </TableCell>
+                                    </TableRow>
+                                  )}
+                                </React.Fragment>
+                              </ContextMenuTrigger>
+                              <ContextMenuContent className="w-64">
+                                <ContextMenuItem onClick={() => handleRowContextMenu(deal.id, 'edit')}>
+                                  <Edit className="h-4 w-4 mr-2" />
+                                  Edit Deal
+                                </ContextMenuItem>
+                                <ContextMenuItem onClick={() => handleRowContextMenu(deal.id, 'duplicate')}>
+                                  <Copy className="h-4 w-4 mr-2" />
+                                  Duplicate Deal
+                                </ContextMenuItem>
+                                <ContextMenuSeparator />
+                                <ContextMenuItem onClick={() => handleRowContextMenu(deal.id, 'favorite')}>
+                                  {favoriteDeals.has(deal.id) ? (
+                                    <>
+                                      <StarOff className="h-4 w-4 mr-2" />
+                                      Remove from Favorites
+                                    </>
+                                  ) : (
+                                    <>
+                                      <Star className="h-4 w-4 mr-2" />
+                                      Add to Favorites
+                                    </>
+                                  )}
+                                </ContextMenuItem>
+                                <ContextMenuItem onClick={() => handleRowContextMenu(deal.id, 'share')}>
+                                  <Share className="h-4 w-4 mr-2" />
+                                  Share Deal
+                                </ContextMenuItem>
+                                <ContextMenuItem onClick={() => handleRowContextMenu(deal.id, 'copy-link')}>
+                                  <Link className="h-4 w-4 mr-2" />
+                                  Copy Link
+                                </ContextMenuItem>
+                                <ContextMenuSeparator />
+                                <ContextMenuItem onClick={() => handleRowContextMenu(deal.id, 'archive')}>
+                                  <Archive className="h-4 w-4 mr-2" />
+                                  Archive Deal
+                                </ContextMenuItem>
+                                <ContextMenuSeparator />
+                                <ContextMenuItem 
+                                  onClick={() => handleRowContextMenu(deal.id, 'delete')}
+                                  className="text-destructive focus:text-destructive"
+                                >
+                                  <Trash2 className="h-4 w-4 mr-2" />
+                                  Delete Deal
+                                </ContextMenuItem>
+                              </ContextMenuContent>
+                            </ContextMenu>
+                          ))}
+                        </TableBody>
+                      </Table>
+                    </div>
+
+                    {/* Scrollable Columns Section */}
+                    <div className="flex-1 overflow-x-auto min-w-0">
+                      <div className="min-w-max">
+                        <Table>
+                          <TableHeader className="bg-muted/30">
+                            <TableRow>
+                              {/* Scrollable Columns */}
+                              {scrollableColumns.map((column) => (
+                                <ContextMenu key={column.key}>
+                                  <ContextMenuTrigger asChild>
+                                    <TableHead 
+                                      className={cn(
+                                        "relative hover:bg-muted/50 transition-colors",
+                                        "border-b border-border"
+                                      )}
+                                      style={{ width: column.width }}
+                                      onClick={() => handleSort(column.key)}
+                                    >
+                                      <div className="flex items-center gap-2">
+                                        <span>{column.title}</span>
+                                        {getSortIcon(column.key)}
+                                      </div>
+                                      {column.resizable && (
+                                        <ResizeHandle 
+                                          onResize={(width) => updateColumnWidth(column.key, width)}
+                                        />
+                                      )}
+                                    </TableHead>
+                                  </ContextMenuTrigger>
+                                  <ContextMenuContent className="w-56">
+                                    <ContextMenuItem onClick={() => handleColumnContextMenu(column.key, 'sort-asc')}>
+                                      <ArrowUp className="h-4 w-4 mr-2" />
+                                      Sort Ascending
+                                    </ContextMenuItem>
+                                    <ContextMenuItem onClick={() => handleColumnContextMenu(column.key, 'sort-desc')}>
+                                      <ArrowDown className="h-4 w-4 mr-2" />
+                                      Sort Descending
+                                    </ContextMenuItem>
+                                    <ContextMenuSeparator />
+                                    <ContextMenuItem onClick={() => handleColumnContextMenu(column.key, 'filter')}>
+                                      <Filter className="h-4 w-4 mr-2" />
+                                      Filter by {column.title}
+                                    </ContextMenuItem>
+                                    <ContextMenuSeparator />
+                                    <ContextMenuItem onClick={() => handleColumnContextMenu(column.key, 'pin')}>
+                                      <Pin className="h-4 w-4 mr-2" />
+                                      Pin Column
+                                    </ContextMenuItem>
+                                    <ContextMenuItem onClick={() => handleColumnContextMenu(column.key, 'hide')}>
+                                      <EyeOff className="h-4 w-4 mr-2" />
+                                      Hide Column
+                                    </ContextMenuItem>
+                                    <ContextMenuSeparator />
+                                    <ContextMenuItem onClick={() => handleColumnContextMenu(column.key, 'export')}>
+                                      <Download className="h-4 w-4 mr-2" />
+                                      Export Column
+                                    </ContextMenuItem>
+                                  </ContextMenuContent>
+                                </ContextMenu>
+                              ))}
+                              
+                              {/* Fixed Columns */}
+                              <TableHead className="w-32">Activities timeline</TableHead>
+                            </TableRow>
+                          </TableHeader>
+                          <TableBody>
+                            {group.deals.map((deal, rowIndex) => (
+                              <ContextMenu key={deal.id}>
+                                <ContextMenuTrigger asChild>
+                                  <React.Fragment>
+                                    <TableRow 
+                                      className={cn(
+                                        "hover:bg-muted/30 group h-12",
+                                        selectedRows.has(deal.id) && "bg-primary/5",
+                                        favoriteDeals.has(deal.id) && "bg-yellow-50/50"
+                                      )}
+                                      onClick={(e) => handleRowSelection(deal.id, e)}
+                                    >
+                                      {/* Scrollable Column Cells */}
+                                      {scrollableColumns.map((column, columnIndex) => 
+                                        renderTableCell(deal, column.key, groupIndex, rowIndex, columnIndex)
+                                      )}
+                                      
+                                      {/* Fixed Cells */}
+                                      <TableCell>
+                                        <ActivityTimeline activities={deal.activities} />
+                                      </TableCell>
+                                    </TableRow>
+
+                                    {/* Expanded Row Content for Scrollable Section */}
+                                    {expandedRows.has(deal.id) && (
+                                      <TableRow className="bg-muted/20 border-l-4 border-primary/20">
+                                        <TableCell colSpan={scrollableColumns.length + 1}>
+                                          <div className="p-6 space-y-4">
+                                            {/* Sub-items Header */}
+                                            <div className="flex items-center justify-between">
+                                              <h4 className="font-semibold text-sm text-muted-foreground">
+                                                Deal Activities & Sub-items
+                                              </h4>
+                                              <Badge variant="outline" className="text-xs">
+                                                {deal.activities?.length || 0} activities
+                                              </Badge>
+                                            </div>
+                                            
+                                            {/* Column Headers */}
+                                            <div className="grid grid-cols-5 gap-4 text-sm font-medium text-muted-foreground border-b pb-2">
+                                              <div>Task/Activity</div>
+                                              <div>Owner</div>
+                                              <div>Status</div>
+                                              <div>Date</div>
+                                              <div>Actions</div>
+                                            </div>
+                                            
+                                            {/* Activities List */}
+                                            {deal.activities && deal.activities.length > 0 ? (
+                                              deal.activities.slice(0, 5).map((activity, index) => (
+                                                <div key={activity.id} className="grid grid-cols-5 gap-4 text-sm py-3 border-b last:border-b-0 hover:bg-muted/30 rounded transition-colors">
+                                                  <div className="flex items-center gap-3">
+                                                    <Checkbox className="h-4 w-4" />
+                                                    <div className="flex items-center gap-2">
+                                                      <div className={`w-2 h-2 rounded-full ${
+                                                        activity.type === 'call' ? 'bg-blue-500' :
+                                                        activity.type === 'email' ? 'bg-green-500' :
+                                                        activity.type === 'meeting' ? 'bg-purple-500' :
+                                                        'bg-orange-500'
+                                                      }`} />
+                                                      <span className="font-medium">{activity.description}</span>
+                                                    </div>
+                                                  </div>
+                                                  <div className="flex items-center gap-2">
+                                                    <Avatar className="h-6 w-6">
+                                                      <AvatarFallback className="text-xs">
+                                                        {getInitials(activity.user)}
+                                                      </AvatarFallback>
+                                                    </Avatar>
+                                                    <span>{activity.user}</span>
+                                                  </div>
+                                                  <div>
+                                                    {index === 0 && (
+                                                      <Badge className="bg-orange-100 text-orange-700 border-orange-200">
+                                                        In Progress
+                                                      </Badge>
+                                                    )}
+                                                    {index === 1 && (
+                                                      <Badge className="bg-blue-100 text-blue-700 border-blue-200">
+                                                        Pending
+                                                      </Badge>
+                                                    )}
+                                                    {index > 1 && (
+                                                      <Badge className="bg-green-100 text-green-700 border-green-200">
+                                                        Completed
+                                                      </Badge>
+                                                    )}
+                                                  </div>
+                                                  <div className="text-muted-foreground">
+                                                    {new Date(activity.date).toLocaleDateString('en-US', {
+                                                      month: 'short',
+                                                      day: 'numeric',
+                                                      year: 'numeric'
+                                                    })}
+                                                  </div>
+                                                  <div className="flex items-center gap-2">
+                                                    <Button size="sm" variant="ghost" className="h-6 px-2">
+                                                      <Edit className="h-3 w-3" />
+                                                    </Button>
+                                                    <Button size="sm" variant="ghost" className="h-6 px-2">
+                                                      <MoreHorizontal className="h-3 w-3" />
+                                                    </Button>
+                                                  </div>
+                                                </div>
+                                              ))
+                                            ) : (
+                                              <div className="text-center py-8 text-muted-foreground">
+                                                <div className="text-lg mb-2">📋</div>
+                                                <div className="text-sm">No activities yet</div>
+                                                <div className="text-xs">Add your first activity to get started</div>
+                                              </div>
+                                            )}
+                                            
+                                            {/* Add New Activity Button */}
+                                            <div className="pt-3 border-t">
+                                              <button className="text-sm text-primary hover:text-primary/80 flex items-center gap-2 font-medium">
+                                                <Plus className="h-4 w-4" />
+                                                Add new sub-item
+                                              </button>
+                                            </div>
+                                            
+                                            {/* Deal Notes Section */}
+                                            {deal.notes && (
+                                              <div className="pt-4 border-t">
+                                                <div className="text-sm font-medium text-muted-foreground mb-2">Deal Notes:</div>
+                                                <div className="text-sm bg-muted/30 p-3 rounded border-l-4 border-primary/30">
+                                                  {deal.notes}
+                                                </div>
+                                              </div>
+                                            )}
+                                          </div>
+                                        </TableCell>
+                                      </TableRow>
+                                    )}
+                                  </React.Fragment>
+                                </ContextMenuTrigger>
+                              </ContextMenu>
+                            ))}
+                            
+                            {/* Add Deal Row */}
+                            <TableRow className="hover:bg-muted/30">
+                              <TableCell colSpan={scrollableColumns.length + 1}>
+                                <button className="flex items-center gap-2 text-muted-foreground hover:text-foreground w-full py-2">
+                                  <Plus className="h-4 w-4" />
+                                  Add deal
+                                </button>
+                              </TableCell>
+                            </TableRow>
+                          </TableBody>
+                        </Table>
+                      </div>
+                    </div>
+                  </div>
                 </div>
               )}
             </div>
@@ -1299,7 +1377,10 @@ export function GroupedDealsTable({ deals, groupByField }: GroupedDealsTableProp
 
       {/* Enhanced Totals Bar - Pinned to Bottom */}
       <div className="sticky bottom-0 bg-background border-t border-border shadow-lg">
-        <TotalsBar deals={dealsData} visibleColumns={visibleColumns} />
+        <TotalsBar 
+          deals={dealsData} 
+          visibleColumns={visibleColumns.map(col => ({ key: col.key, title: col.title }))} 
+        />
       </div>
     </div>
   );
