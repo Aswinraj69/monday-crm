@@ -1106,10 +1106,10 @@ export function GroupedDealsTable({ deals, groupByField }: GroupedDealsTableProp
                                   {expandedRows.has(deal.id) && (
                                     <TableRow className="bg-muted/20 border-l-4 border-primary/20">
                                       <TableCell colSpan={pinnedColumns.length + 2}>
-                                        <div className="p-4 text-sm text-muted-foreground">
+                                        <div className="p-2 text-sm text-muted-foreground">
                                           <span className="font-medium">Deal: {deal.dealName}</span>
                                           <br />
-                                          <span>Company: {deal.company}</span>
+                                          {/* <span>Company: {deal.company}</span> */}
                                         </div>
                                       </TableCell>
                                     </TableRow>
@@ -1260,7 +1260,7 @@ export function GroupedDealsTable({ deals, groupByField }: GroupedDealsTableProp
                                     {expandedRows.has(deal.id) && (
                                       <TableRow className="bg-muted/20 border-l-4 border-primary/20">
                                         <TableCell colSpan={scrollableColumns.length + 1}>
-                                          <div className="p-6 space-y-4">
+                                          <div className="p-[12.8px] space-y-4">
                                             {/* Sub-items Header */}
                                             <div className="flex items-center justify-between">
                                               <h4 className="font-semibold text-sm text-muted-foreground">
